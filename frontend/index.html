@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Melbourne Car Park Solution</title>
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' fill='%232e86de'/><text x='32' y='40' text-anchor='middle' font-size='36' font-family='Arial' fill='white'>P</text></svg>">
+
+  <!-- Base styles (self-contained) -->
+  <style>
+    :root{
+      --bg: #0b1020;            /* page background */
+      --panel: #0f1530;         /* card background */
+      --panel-2: #0d132b;       /* darker */
+      --muted: #a9b1c7;
+      --text: #e7ecfa;
+      --primary: #2e86de;       /* Melbourne blue */
+      --primary-2:#1f6ec0;
+      --accent: #22c55e;        /* green for eco */
+      --warning: #f5a524;
+      --ring: rgba(46,134,222,.45);
+      --border: rgba(255,255,255,.08);
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.03) inset;
+      --shadow-soft: 0 8px 20px rgba(0,0,0,.25);
+      --container: 1160px;
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 10% -10%, rgba(46,134,222,.15), transparent 60%),
+                  radial-gradient(1000px 600px at 120% 0%, rgba(34,197,94,.12), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+    }
+
+    .container{max-width:var(--container); margin:0 auto; padding: 0 20px}
+
+    /* Header */
+    .site-header{ position: sticky; top:0; z-index:50; backdrop-filter:saturate(140%) blur(8px); background: rgba(11,16,32,.75); border-bottom:1px solid var(--border)}
+    .header-inner{ display:flex; align-items:center; justify-content:space-between; padding:14px 0}
+    .site-header h1{font-size:20px; margin:0; letter-spacing:.3px; font-weight:700}
+    .top-nav a{ color: var(--muted); text-decoration:none; padding:10px 12px; border-radius:10px; display:inline-block }
+    .top-nav a:hover,.top-nav a:focus{ color:var(--text); background:rgba(255,255,255,.06)}
+
+    /* Cards */
+    .card{ background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow: var(--shadow); }
+    .panel{ background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)); border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow: var(--shadow-soft); }
+
+    /* Hero spacing */
+    main .card + .card, main .card + .panel, main .panel + .card { margin-top:16px }
+
+    h2,h3,h4{ line-height:1.2; margin:0 0 10px 0; letter-spacing:.2px }
+    h2{ font-size:28px }
+    h3{ font-size:22px }
+    h4{ font-size:18px; color:#eaf0ff }
+    .muted{ color: var(--muted) }
+
+    /* Form controls */
+    .label{ display:block; font-weight:600; margin-bottom:6px}
+    .input, input[type="text"], input[type="search"], select{ width:100%; background: #0c1228; color: var(--text); border:1px solid var(--border); border-radius:12px; padding:12px 14px; outline:none; transition:.2s border,.2s box-shadow }
+    .input:focus, input:focus, select:focus{ border-color: var(--primary); box-shadow: 0 0 0 6px var(--ring) }
+
+    .btn, button{
+      appearance:none; border:none; cursor:pointer; color:#fff; font-weight:600; letter-spacing:.2px;
+      border-radius:12px; padding:11px 14px; background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 6px 16px rgba(46,134,222,.35); transition: transform .06s ease, box-shadow .2s ease, filter .2s ease
+    }
+    .btn:hover, button:hover{ box-shadow:0 10px 24px rgba(46,134,222,.45); filter:saturate(115%)}
+    .btn:active, button:active{ transform: translateY(1px) }
+    .btn-ghost{ background:transparent; border:1px solid var(--border); color:var(--text) }
+    .btn-eco{ background: linear-gradient(135deg, var(--accent), #16a34a); box-shadow: 0 6px 16px rgba(34,197,94,.28) }
+
+    /* Search box */
+    .search .input{ font-size:16px }
+    .suggestions{ list-style:none; padding:0; margin:8px 0 0; border:1px solid var(--border); border-radius:12px; overflow:hidden; background:#0c1228; display:none }
+    .suggestions.show{ display:block }
+    .suggestions li{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.04); cursor:pointer }
+    .suggestions li:hover{ background: rgba(255,255,255,.04) }
+
+    /* Map */
+    .map{ width:100%; height: 420px; border-radius:14px; overflow:hidden; border:1px solid var(--border) }
+    #lotList{ margin-top:12px; display:grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap:10px }
+    .lot-item{ padding:12px; border:1px solid var(--border); border-radius:12px; background:#0c1228 }
+
+    /* Env grid */
+    .env-grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap:12px }
+    .env-card{ padding:14px; border:1px solid var(--border); border-radius:12px; background: linear-gradient(180deg, rgba(34,197,94,.07), rgba(34,197,94,.03)) }
+    .env-metric{ display:flex; align-items:center; justify-content:space-between; gap:8px; border-top:1px dashed rgba(255,255,255,.08); padding-top:10px; margin-top:10px }
+
+    .section-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px }
+    .section-title{ margin:0 }
+
+    /* Insights */
+    #insights .controls label{ display:flex; gap:6px; align-items:center; color: var(--muted)}
+    canvas{ background: #0c1228; border:1px solid var(--border); border-radius:12px; padding:6px }
+
+    /* Footer */
+    .site-footer{ border-top:1px solid var(--border); margin-top:22px; padding:18px 0; color:var(--muted); background: rgba(0,0,0,.15) }
+
+    /* Responsive */
+    @media (max-width: 680px){
+      .top-nav{ display:none }
+      .site-header h1{ font-size:18px }
+    }
+
+    /* Leaflet overrides for dark theme */
+    .leaflet-container{ background:#0c1228 }
+    .leaflet-control-zoom a{ background:#121937; color:#fff; border:1px solid var(--border) }
+    .leaflet-bar a:hover{ background:#17214a }
+  </style>
+
+  <!-- Leaflet (map) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- MarkerCluster (performance for many markers) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <!-- Chart.js (Insights charts) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- App logic as ES module so we can top-level await config -->
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <h1>Melbourne Car Park Solution</h1>
+      <nav class="top-nav">
+        <a href="#map">Real-Time Map</a>
+        <a href="#environment">Environment Options</a>
+        <a href="#insights">Melbourne Insights</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Project Overview -->
+    <section class="hero card" style="text-align:center;">
+      <h2>Melbourne Car Park Solution</h2>
+      <p style="font-size: 2em; font-weight:bold;">
+        Find parking fast with live updates.
+      </p>
+      <p style="font-size: 2em; font-weight:bold">
+        See eco-friendly travel options and quick insights to plan your trip better.
+      </p>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; justify-content:center;">
+        <a href="#map" class="btn">Open Map</a>
+        <a href="#environment" class="btn btn-eco">Eco Options</a>
+        <a href="#insights" class="btn btn-ghost">Insights</a>
+      </div>
+    </section>
+
+
+    <!-- Destination Search -->
+    <section class="search card">
+      <label for="searchBox" class="label">Where do you want to go?</label>
+      <input id="searchBox" class="input" placeholder="Type a place (e.g., Federation Square)" />
+      <ul id="suggestions" class="suggestions" aria-live="polite"></ul>
+    </section>
+
+    <!-- Real-time Parking Map -->
+    <section id="map" class="map-section card">
+      <div class="section-head">
+        <h3 class="section-title">Real-Time Parking Map</h3>
+        <span id="status" class="muted">Type a destination to load nearby parking.</span>
+      </div>
+      <div id="leaflet" class="map"></div>
+      <div id="lotList" class="lot-list"></div>
+    </section>
+
+    <!-- Environment Options -->
+    <section id="environment" class="card env">
+      <div class="section-head">
+        <h3 class="section-title">Environment-Friendly Choices</h3>
+        <span class="muted">Estimate distance & greener routes</span>
+      </div>
+
+      <div class="env-form" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <button id="useMyLocation" class="btn">Allow access to your location</button>
+        <span id="originStatus" class="muted">Origin: not set</span>
+
+        <input id="destText" class="input" placeholder="Type destination address e.g. Melbourne Central" style="min-width:320px" aria-label="Destination address">
+        <label class="muted" style="display:flex;align-items:center;gap:6px;user-select:none">
+          <input type="checkbox" id="cbdOnly" checked>
+          Only CBD (3000)
+        </label>
+        <button id="computeBtn" class="btn btn-eco">Compute</button>
+      </div>
+
+      <p class="muted" id="envIntro">
+        Choose “Allow access to your location”, then type a destination and click Compute.
+      </p>
+      <div id="envSuggestions" class="env-grid"></div>
+    </section>
+
+    <!-- Insights -->
+    <section id="insights" class="panel" style="margin-top:16px;">
+      <h3 style="margin-bottom:6px">Melbourne Insights</h3>
+
+      <div id="carOwnershipCard" class="card" style="margin:12px 0;">
+        <h4>Car ownership by region</h4>
+        <div class="controls" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0;">
+          <label>Year
+            <select id="carYear"></select>
+          </label>
+          <label>Region
+            <select id="carRegion"></select>
+          </label>
+        </div>
+        <canvas id="carOwnershipChart" height="200"></canvas>
+      </div>
+
+      <div id="cbdPopulationCard" class="card" style="margin:12px 0;">
+        <h4>CBD population</h4>
+        <div class="controls" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0;">
+          <label>Year
+            <select id="cbdYear"></select>
+          </label>
+        </div>
+        <canvas id="cbdPopulationChart" height="200"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <small>© 2025 Melbourne Car Park Solution • Frontend demo (mock backend)</small>
+    </div>
+  </footer>
+  <!-- Environment logic moved into app.js (EnvCompare.init). -->
+</body>
+</html>
